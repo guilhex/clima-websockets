@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Monitor Climático</title>
+
+  <!-- Bibliotecas exigidas pelo exercício -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f5f5f5;
+    }
+
+    h1 { color: #333; }
+
+    /* Status de conexão pedido pelo exercício */
+    #status {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-bottom: 24px;
+      background: #e74c3c;
+      color: white;
+    }
+
+    #status.conectado {
+      background: #2ecc71;
+    }
+
+    /* Lista onde as temperaturas aparecem em tempo real */
+    #lista {
+      list-style: none;
+      padding: 0;
+    }
+
+    /* Card de cada cidade */
+    #lista li {
+      padding: 14px 18px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 15px;
+      border-left: 5px solid transparent;
+    }
+
+    /* Cores por faixa de temperatura conforme pedido no exercício */
+    #lista li.frio   { background: #d6eaf8; border-color: #2980b9; }
+    #lista li.ameno  { background: #d5f5e3; border-color: #27ae60; }
+    #lista li.quente { background: #fadbd8; border-color: #e74c3c; }
+
+    .cidade    { font-weight: bold; font-size: 16px; }
+    .temp      { font-size: 22px; font-weight: bold; margin: 4px 0; }
+    .descricao { color: #555; }
+    .horario   { font-size: 12px; color: #999; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+  <h1>Monitor Climático em Tempo Real</h1>
+
+  <!-- Exibe Conectado / Desconectado conforme exigido -->
+  <div id="status">Desconectado</div>
+
+  <!-- Lista onde os cards aparecem conforme chegam do servidor -->
+  <ul id="lista"></ul>
+
+  <script>
+    // Abre a conexão WebSocket usando SockJS (com fallback automático)
+    const socket = new SockJS('/ws-clima');
+    const stomp  = Stomp.over(socket);
+
+    // Desativa logs internos do STOMP
+    stomp.debug = null;
+
+    // Tenta conectar ao servidor
+    stomp.connect({}, function () {
+
+      // Atualiza o badge para "Conectado"
+      const badge = document.getElementById('status');
+      badge.textContent = 'Conectado';
+      badge.classList.add('conectado');
+
+      // Inscreve no tópico onde o servidor faz broadcast a cada 5 segundos
+      stomp.subscribe('/topic/clima', function (frame) {
+
+        // Converte o JSON recebido em objeto
+        const data = JSON.parse(frame.body);
+
+        // Renderiza ou atualiza o card da cidade
+        renderCard(data);
+      });
+
+    }, function () {
+      // Chamado se a conexão cair ou falhar
+      document.getElementById('status').textContent = 'Desconectado';
+      document.getElementById('status').classList.remove('conectado');
+    });
+
+    // Cria ou atualiza um card na lista para a cidade recebida
+    function renderCard(data) {
+      const lista = document.getElementById('lista');
+      const id    = 'city-' + data.cidade.replace(/\s/g, '-');
+
+      // Define a classe de cor baseada na temperatura
+      let classe = 'ameno';
+      if (data.temperatura <= 18) classe = 'frio';
+      if (data.temperatura >= 28) classe = 'quente';
+
+      // Verifica se o card já existe para atualizar em vez de duplicar
+      let item = document.getElementById(id);
+
+      if (!item) {
+        item = document.createElement('li');
+        item.id = id;
+        lista.prepend(item);
+      }
+
+      // Remove classes antigas e aplica a nova cor
+      item.className = classe;
+
+      // Preenche o conteúdo com os campos do JSON enviado pelo servidor
+      item.innerHTML =
+        '<div class="cidade">' + data.cidade + '</div>' +
+        '<div class="temp">' + data.temperatura.toFixed(1) + ' C</div>' +
+        '<div class="descricao">' + data.descricao + '</div>' +
+        '<div class="horario">' + data.horario + '</div>';
+    }
+  </script>
+
+</body>
+</html>
