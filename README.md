@@ -17,7 +17,7 @@ Sistema de monitoramento de temperatura em tempo real. O servidor **empurra** da
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/<seu-usuario>/clima-websocket.git
+https://github.com/guilhex/clima-websockets
 cd clima-websocket
 
 # 2. Suba o servidor
